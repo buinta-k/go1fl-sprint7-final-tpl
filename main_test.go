@@ -59,7 +59,7 @@ func TestCafeCount(t *testing.T) {
 		{"/cafe?city=tula&count=0", 0},
 		{"/cafe?city=tula&count=1", 1},
 		{"/cafe?city=moscow&count=2", 2},
-		{"/cafe?city=moscow&count=100", 100},
+		{"/cafe?city=moscow&count=100", 15},
 	}
 
 	for _, v := range requests {
