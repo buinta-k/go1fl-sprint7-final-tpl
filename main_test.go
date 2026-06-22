@@ -70,8 +70,13 @@ func TestCafeCount(t *testing.T) {
 
 		bodyStr := response.Body.String()
 
-
+		var gotCount int
+		if bodyStr != "" {
 			slice := strings.Split(bodyStr, ",")
+			gotCount = len(slice)
+		} else {
+			gotCount = 0
+		}
 
 		assert.Equal(t, v.want, gotCount)
 	}
