@@ -48,3 +48,80 @@ func TestCafeWhenOk(t *testing.T) {
 		assert.Equal(t, http.StatusOK, response.Code)
 	}
 }
+
+func TestCafeCount(t *testing.T) {
+	handler := http.HandlerFunc(mainHandle)
+
+	requests := []struct {
+		count string
+		want  int
+	}{
+		{"/cafe?city=tula&count=0", 0},
+		{"/cafe?city=tula&count=1", 1},
+		{"/cafe?city=moscow&count=2", 2},
+		{"/cafe?city=moscow&count=100", 100},
+	}
+
+	for _, v := range requests {
+		response := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", v.count, nil)
+
+		handler.ServeHTTP(response, req)
+
+		bodyStr := response.Body.String()
+
+		var gotCount int
+		if bodyStr != "" {
+			slice := strings.Split(bodyStr, ",")
+			gotCount = len(slice)
+		} else {
+			gotCount = 0
+		}
+
+		assert.Equal(t, v.want, gotCount)
+	}
+}
+
+func TestCafeSearch(t *testing.T) {
+	handler := http.HandlerFunc(mainHandle)
+
+	requests := []struct {
+		search    string
+		wantCount int
+		word      string
+	}{
+		{"/cafe?city=moscow&search=фасоль", 0, "фасоль"},
+		{"/cafe?city=moscow&search=кофе", 2, "кофе"},
+		{"/cafe?city=moscow&search=вилка", 1, "вилка"},
+	}
+
+	for _, v := range requests {
+
+		response := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", v.search, nil)
+
+		handler.ServeHTTP(response, req)
+
+		assert.Equal(t, http.StatusOK, response.Code)
+
+		bodyStr := strings.TrimSpace(response.Body.String())
+
+		if v.wantCount == 0 {
+			assert.Empty(t, bodyStr)
+			continue
+		}
+
+		cafes := strings.Split(bodyStr, ",")
+
+		assert.Equal(t, v.wantCount, len(cafes))
+
+		for _, name := range cafes {
+			cafename := strings.ToLower(name)
+
+			assert.True(t, strings.Contains(cafename, v.word))
+		}
+
+	}
+
+}
+
