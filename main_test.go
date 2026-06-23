@@ -1,12 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCafeNegative(t *testing.T) {
@@ -52,29 +54,32 @@ func TestCafeWhenOk(t *testing.T) {
 func TestCafeCount(t *testing.T) {
 	handler := http.HandlerFunc(mainHandle)
 
+	city := "moscow"
+
 	requests := []struct {
-		count string
+		count int
 		want  int
 	}{
-		{"/cafe?city=tula&count=0", 0},
-		{"/cafe?city=tula&count=1", 1},
-		{"/cafe?city=moscow&count=2", 2},
-		{"/cafe?city=moscow&count=100", 5},
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{100, min(len(cafeList[city]), 100)},
 	}
 
 	for _, v := range requests {
 		response := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", v.count, nil)
+
+		url := fmt.Sprintf("/cafe?count=%d&city=%s", v.count, city)
+		req := httptest.NewRequest("GET", url, nil)
 
 		handler.ServeHTTP(response, req)
 
+		assert.Equal(t, http.StatusOK, response.Code)
+
 		bodyStr := response.Body.String()
 
-		var gotCount int
-		if bodyStr != "" {
-			slice := strings.Split(bodyStr, ",")
-			gotCount = len(slice)
-		} else {
+		gotCount := len(strings.Split(bodyStr, ","))
+		if bodyStr == "" {
 			gotCount = 0
 		}
 
@@ -86,23 +91,23 @@ func TestCafeSearch(t *testing.T) {
 	handler := http.HandlerFunc(mainHandle)
 
 	requests := []struct {
-		search    string
 		wantCount int
 		word      string
 	}{
-		{"/cafe?city=moscow&search=фасоль", 0, "фасоль"},
-		{"/cafe?city=moscow&search=кофе", 2, "кофе"},
-		{"/cafe?city=moscow&search=вилка", 1, "вилка"},
+		{0, "фасоль"},
+		{2, "кофе"},
+		{1, "вилка"},
 	}
 
 	for _, v := range requests {
-
 		response := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", v.search, nil)
+
+		url := fmt.Sprintf("/cafe?city=moscow&search=%s", v.word)
+		req := httptest.NewRequest("GET", url, nil)
 
 		handler.ServeHTTP(response, req)
 
-		assert.Equal(t, http.StatusOK, response.Code)
+		require.Equal(t, http.StatusOK, response.Code)
 
 		bodyStr := strings.TrimSpace(response.Body.String())
 
@@ -113,15 +118,12 @@ func TestCafeSearch(t *testing.T) {
 
 		cafes := strings.Split(bodyStr, ",")
 
-		assert.Equal(t, v.wantCount, len(cafes))
+		assert.Len(t, cafes, v.wantCount)
 
 		for _, name := range cafes {
 			cafename := strings.ToLower(name)
 
-			assert.True(t, strings.Contains(cafename, v.word))
+			assert.Contains(t, cafename, v.word)
 		}
-
 	}
-
 }
-
